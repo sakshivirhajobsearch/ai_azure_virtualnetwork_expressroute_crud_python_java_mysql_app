@@ -1,55 +1,88 @@
 import mysql.connector
+from mysql.connector import Error
+import configparser
 
-# ---------------- MySQL Connection Helper ----------------
-def get_connection(host, user, password, database):
-    return mysql.connector.connect(
-        host=host, user=user, password=password, database=database
+# Load config
+config = configparser.ConfigParser()
+config.read('config.properties')
+
+# Connect to MySQL
+try:
+    conn = mysql.connector.connect(
+        host=config.get('DEFAULT', 'mysql_host'),
+        user=config.get('DEFAULT', 'mysql_user'),
+        password=config.get('DEFAULT', 'mysql_password'),
+        database=config.get('DEFAULT', 'mysql_db')
     )
+    cursor = conn.cursor()
+    print("Connected to MySQL successfully.")
+except Error as e:
+    print(f"Error connecting to MySQL: {e}")
+    exit(1)
 
-# ---------------- FETCH Operations ----------------
-def fetch_vnets(host, user, password, database):
-    conn = get_connection(host, user, password, database)
-    try:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM virtual_networks")  # Replace with your table name
-        return cursor.fetchall()
-    finally:
-        cursor.close()
-        conn.close()
+# Auto-create tables
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS virtual_networks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    location VARCHAR(255),
+    address_space VARCHAR(255)
+)
+""")
 
-def fetch_expressroutes(host, user, password, database):
-    conn = get_connection(host, user, password, database)
-    try:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM expressroutes")  # Replace with your table name
-        return cursor.fetchall()
-    finally:
-        cursor.close()
-        conn.close()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS expressroutes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    peering_location VARCHAR(255),
+    bandwidth VARCHAR(255)
+)
+""")
+conn.commit()
 
-# ---------------- INSERT Operations ----------------
-def insert_vnet(host, user, password, database, vnet_data):
-    conn = get_connection(host, user, password, database)
-    try:
-        cursor = conn.cursor()
-        cols = ", ".join(vnet_data.keys())
-        vals = ", ".join(["%s"] * len(vnet_data))
-        sql = f"INSERT INTO virtual_networks ({cols}) VALUES ({vals})"
-        cursor.execute(sql, list(vnet_data.values()))
-        conn.commit()
-    finally:
-        cursor.close()
-        conn.close()
+# ----------------- CRUD Operations -----------------
+def insert_virtual_network(name, location, address_space):
+    cursor.execute(
+        "INSERT INTO virtual_networks (name, location, address_space) VALUES (%s, %s, %s)",
+        (name, location, address_space)
+    )
+    conn.commit()
 
-def insert_expressroute(host, user, password, database, er_data):
-    conn = get_connection(host, user, password, database)
-    try:
-        cursor = conn.cursor()
-        cols = ", ".join(er_data.keys())
-        vals = ", ".join(["%s"] * len(er_data))
-        sql = f"INSERT INTO expressroutes ({cols}) VALUES ({vals})"
-        cursor.execute(sql, list(er_data.values()))
-        conn.commit()
-    finally:
-        cursor.close()
-        conn.close()
+def fetch_virtual_networks():
+    cursor.execute("SELECT * FROM virtual_networks")
+    return cursor.fetchall()
+
+def update_virtual_network(vnet_id, name=None, location=None, address_space=None):
+    sql = "UPDATE virtual_networks SET "
+    params = []
+    updates = []
+    if name:
+        updates.append("name=%s")
+        params.append(name)
+    if location:
+        updates.append("location=%s")
+        params.append(location)
+    if address_space:
+        updates.append("address_space=%s")
+        params.append(address_space)
+    if not updates:
+        return
+    sql += ", ".join(updates) + " WHERE id=%s"
+    params.append(vnet_id)
+    cursor.execute(sql, tuple(params))
+    conn.commit()
+
+def delete_virtual_network(vnet_id):
+    cursor.execute("DELETE FROM virtual_networks WHERE id=%s", (vnet_id,))
+    conn.commit()
+
+def insert_expressroute(name, peering_location, bandwidth):
+    cursor.execute(
+        "INSERT INTO expressroutes (name, peering_location, bandwidth) VALUES (%s, %s, %s)",
+        (name, peering_location, bandwidth)
+    )
+    conn.commit()
+
+def fetch_expressroutes():
+    cursor.execute("SELECT * FROM expressroutes")
+    return cursor.fetchall()

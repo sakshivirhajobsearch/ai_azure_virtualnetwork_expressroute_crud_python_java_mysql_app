@@ -1,29 +1,23 @@
-import configparser
-from db_connector import fetch_vnets, fetch_expressroutes
+from db_connector import fetch_virtual_networks, fetch_expressroutes
 
-# === Load configuration ===
-config = configparser.ConfigParser()
-files_read = config.read('config.properties')
-if not files_read:
-    raise FileNotFoundError("config.properties not found in current directory.")
+# Simple "AI" example: count VNets per location
+vnets = fetch_virtual_networks()
+location_count = {}
+for v in vnets:
+    loc = v[2]
+    location_count[loc] = location_count.get(loc, 0) + 1
 
-# Debug: check sections
-print("Config Sections:", config.sections())  # Should include 'mysql' and 'azure'
+print("Virtual Networks per location:")
+for loc, count in location_count.items():
+    print(f"{loc}: {count}")
 
-# MySQL config
-mysql_host = config['mysql']['mysql_host']
-mysql_user = config['mysql']['mysql_user']
-mysql_password = config['mysql']['mysql_password']
-mysql_db = config['mysql']['mysql_db']
+# Count ExpressRoutes per bandwidth
+ers = fetch_expressroutes()
+bandwidth_count = {}
+for er in ers:
+    bw = er[3]
+    bandwidth_count[bw] = bandwidth_count.get(bw, 0) + 1
 
-# === Fetch Virtual Networks from MySQL ===
-print("\nFetching Virtual Networks from database...")
-vnets = fetch_vnets(mysql_host, mysql_user, mysql_password, mysql_db)
-for vnet in vnets:
-    print(vnet)
-
-# === Fetch ExpressRoute connections from MySQL ===
-print("\nFetching ExpressRoute connections from database...")
-expressroutes = fetch_expressroutes(mysql_host, mysql_user, mysql_password, mysql_db)
-for er in expressroutes:
-    print(er)
+print("\nExpressRoutes per bandwidth:")
+for bw, count in bandwidth_count.items():
+    print(f"{bw}: {count}")

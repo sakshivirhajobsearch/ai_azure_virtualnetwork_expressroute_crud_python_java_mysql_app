@@ -19,7 +19,7 @@ No description provided.
 
 ## 🧠 Tech Stack Used
 
-- **Detected Technologies:** Python, Java (Maven/Gradle), MySQL, Azure
+- **Detected Technologies:** Azure, Express.js, Java, MySQL, Python
 - **GitHub Topics:** None
 
 ---
